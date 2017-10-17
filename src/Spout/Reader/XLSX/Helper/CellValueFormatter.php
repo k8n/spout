@@ -101,6 +101,17 @@ class CellValueFormatter
     }
 
     /**
+     * Returns the cell style associated to the given XML node.
+     *
+     * @param \DOMNode $node
+     * @return string|int|float|bool|\DateTime|null The value associated with the cell (null when the cell has an error)
+     */
+    public function extractNodeStyle($node) {
+        $cellStyleId = intval($node->getAttribute(self::XML_ATTRIBUTE_STYLE_ID));
+        return $this->styleHelper->getStyleAttributes($cellStyleId);
+    }
+
+    /**
      * Returns the cell's string value from a node's nested value node
      *
      * @param \DOMNode $node

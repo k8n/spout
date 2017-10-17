@@ -57,6 +57,9 @@ class RowIterator implements IteratorInterface
     /** @var array Contains the data for the currently processed row (key = cell index, value = cell value) */
     protected $currentlyProcessedRowData = [];
 
+    /** @var array Contains the style information for the currently processed row (key = cell index, value = cell style) */
+    protected $currentlyProcessedRowStyles = [];
+
     /** @var array|null Buffer used to store the row data, while checking if there are more rows to read */
     protected $rowDataBuffer = null;
 
@@ -113,6 +116,10 @@ class RowIterator implements IteratorInterface
     protected function normalizeSheetDataXMLFilePath($sheetDataXMLFilePath)
     {
         return ltrim($sheetDataXMLFilePath, '/');
+    }
+
+    public function getCurrentRowCellStyle($index) {
+        return $this->currentlyProcessedRowStyles[$index];
     }
 
     /**
@@ -201,6 +208,7 @@ class RowIterator implements IteratorInterface
     protected function readDataForNextRow()
     {
         $this->currentlyProcessedRowData = [];
+        $this->currentlyProcessedRowStyles = [];
 
         try {
             $this->xmlProcessor->readUntilStopped();
@@ -262,6 +270,7 @@ class RowIterator implements IteratorInterface
         // NOTE: expand() will automatically decode all XML entities of the child nodes
         $node = $xmlReader->expand();
         $this->currentlyProcessedRowData[$currentColumnIndex] = $this->getCellValue($node);
+        $this->currentlyProcessedRowStyles[$currentColumnIndex] = $this->getCellStyle($node);
         $this->lastColumnIndexProcessed = $currentColumnIndex;
 
         return XMLProcessor::PROCESSING_CONTINUE;
@@ -340,6 +349,17 @@ class RowIterator implements IteratorInterface
     protected function getCellValue($node)
     {
         return $this->cellValueFormatter->extractAndFormatNodeValue($node);
+    }
+
+    /**
+     * Returns the cell style associated to the given XML node.
+     *
+     * @param \DOMNode $node
+     * @return string|int|float|bool|\DateTime|null The value associated with the cell (null when the cell has an error)
+     */
+    protected function getCellStyle($node)
+    {
+        return $this->cellValueFormatter->extractNodeStyle($node);
     }
 
     /**

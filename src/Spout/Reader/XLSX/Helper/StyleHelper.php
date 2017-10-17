@@ -24,6 +24,7 @@ class StyleHelper
     /** Attributes used to find relevant information in the styles XML file */
     const XML_ATTRIBUTE_NUM_FMT_ID = 'numFmtId';
     const XML_ATTRIBUTE_FORMAT_CODE = 'formatCode';
+    const XML_ATTRIBUTE_FILL_ID = 'fillId';
     const XML_ATTRIBUTE_APPLY_NUMBER_FORMAT = 'applyNumberFormat';
 
     /** By convention, default style ID is 0 */
@@ -98,6 +99,17 @@ class StyleHelper
     }
 
     /**
+     * Returns the style attributes for the given ID.
+     *
+     * @param int $styleId Zero-based style ID
+     * @return bool Whether the cell with the given cell should display a date instead of a numeric value
+     */
+    public function getStyleAttributes($styleId) {
+        $stylesAttributes = $this->getStylesAttributes();
+        return $stylesAttributes[$styleId];
+    }
+
+    /**
      * Reads the styles.xml file and extract the relevant information from the file.
      *
      * @return void
@@ -158,6 +170,7 @@ class StyleHelper
         while ($xmlReader->read()) {
             if ($xmlReader->isPositionedOnStartingNode(self::XML_NODE_XF)) {
                 $numFmtId = $xmlReader->getAttribute(self::XML_ATTRIBUTE_NUM_FMT_ID);
+                $fillId = $xmlReader->getAttribute(self::XML_ATTRIBUTE_FILL_ID);
                 $normalizedNumFmtId = ($numFmtId !== null) ? intval($numFmtId) : null;
 
                 $applyNumberFormat = $xmlReader->getAttribute(self::XML_ATTRIBUTE_APPLY_NUMBER_FORMAT);
@@ -166,6 +179,7 @@ class StyleHelper
                 $this->stylesAttributes[] = [
                     self::XML_ATTRIBUTE_NUM_FMT_ID => $normalizedNumFmtId,
                     self::XML_ATTRIBUTE_APPLY_NUMBER_FORMAT => $normalizedApplyNumberFormat,
+                    self::XML_ATTRIBUTE_FILL_ID => $fillId,
                 ];
             } else if ($xmlReader->isPositionedOnEndingNode(self::XML_NODE_CELL_XFS)) {
                 // Once done reading "cellXfs" node's children
