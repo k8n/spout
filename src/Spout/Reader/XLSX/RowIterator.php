@@ -119,7 +119,8 @@ class RowIterator implements IteratorInterface
     }
 
     public function getCurrentRowCellStyle($index) {
-        return $this->currentlyProcessedRowStyles[$index];
+        if (array_key_exists($index, $this->currentlyProcessedRowStyles))
+            return $this->currentlyProcessedRowStyles[$index];
     }
 
     /**
