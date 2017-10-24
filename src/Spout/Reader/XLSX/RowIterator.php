@@ -60,6 +60,8 @@ class RowIterator implements IteratorInterface
     /** @var array Contains the style information for the currently processed row (key = cell index, value = cell style) */
     protected $currentlyProcessedRowStyles = [];
 
+    protected $currentlyProcessedRowFills = [];
+
     /** @var array|null Buffer used to store the row data, while checking if there are more rows to read */
     protected $rowDataBuffer = null;
 
@@ -121,6 +123,11 @@ class RowIterator implements IteratorInterface
     public function getCurrentRowCellStyle($index) {
         if (array_key_exists($index, $this->currentlyProcessedRowStyles))
             return $this->currentlyProcessedRowStyles[$index];
+    }
+
+    public function getCurrentRowCellFill($index) {
+        if (array_key_exists($index, $this->currentlyProcessedRowFills))
+            return $this->currentlyProcessedRowFills[$index];
     }
 
     /**
@@ -210,6 +217,7 @@ class RowIterator implements IteratorInterface
     {
         $this->currentlyProcessedRowData = [];
         $this->currentlyProcessedRowStyles = [];
+        $this->currentlyProcessedRowFills = [];
 
         try {
             $this->xmlProcessor->readUntilStopped();
@@ -272,6 +280,7 @@ class RowIterator implements IteratorInterface
         $node = $xmlReader->expand();
         $this->currentlyProcessedRowData[$currentColumnIndex] = $this->getCellValue($node);
         $this->currentlyProcessedRowStyles[$currentColumnIndex] = $this->getCellStyle($node);
+        $this->currentlyProcessedRowFills[$currentColumnIndex] = $this->getCellFill($node);
         $this->lastColumnIndexProcessed = $currentColumnIndex;
 
         return XMLProcessor::PROCESSING_CONTINUE;
@@ -361,6 +370,12 @@ class RowIterator implements IteratorInterface
     protected function getCellStyle($node)
     {
         return $this->cellValueFormatter->extractNodeStyle($node);
+    }
+
+    //
+    protected function getCellFill($node)
+    {
+        return $this->cellValueFormatter->extractNodeFill($node);
     }
 
     /**

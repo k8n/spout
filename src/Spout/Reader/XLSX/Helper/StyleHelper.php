@@ -3,6 +3,7 @@
 namespace Box\Spout\Reader\XLSX\Helper;
 
 use Box\Spout\Reader\Wrapper\XMLReader;
+use DOMDocument;
 
 /**
  * Class StyleHelper
@@ -18,6 +19,9 @@ class StyleHelper
     /** Nodes used to find relevant information in the styles XML file */
     const XML_NODE_NUM_FMTS = 'numFmts';
     const XML_NODE_NUM_FMT = 'numFmt';
+    const XML_NODE_FILLS = 'fills';
+    const XML_NODE_FILL = 'fill';
+    const XML_NODE_PATTERN_FILL = 'patternFill';
     const XML_NODE_CELL_XFS = 'cellXfs';
     const XML_NODE_XF = 'xf';
 
@@ -25,6 +29,7 @@ class StyleHelper
     const XML_ATTRIBUTE_NUM_FMT_ID = 'numFmtId';
     const XML_ATTRIBUTE_FORMAT_CODE = 'formatCode';
     const XML_ATTRIBUTE_FILL_ID = 'fillId';
+    const XML_ATTRIBUTE_BGCOLOR = 'bgColor';
     const XML_ATTRIBUTE_APPLY_NUMBER_FORMAT = 'applyNumberFormat';
 
     /** By convention, default style ID is 0 */
@@ -62,6 +67,8 @@ class StyleHelper
 
     /** @var array Array containing a mapping STYLE_ID => [STYLE_ATTRIBUTES] */
     protected $stylesAttributes;
+
+    protected $fillAttributes;
 
     /** @var array Cache containing a mapping NUM_FMT_ID => IS_DATE_FORMAT. Used to avoid lots of recalculations */
     protected $numFmtIdToIsDateFormatCache = [];
@@ -109,6 +116,12 @@ class StyleHelper
         return $stylesAttributes[$styleId];
     }
 
+    public function getFillAttributes($styleId) {
+        $sa = $this->getStyleAttributes($styleId);
+        $fillsAttributes = $this->getFillsAttributes();
+        return $fillsAttributes[$sa['fillId']];
+    }
+
     /**
      * Reads the styles.xml file and extract the relevant information from the file.
      *
@@ -118,6 +131,7 @@ class StyleHelper
     {
         $this->customNumberFormats = [];
         $this->stylesAttributes = [];
+        $this->fillAttributes = [];
 
         $xmlReader = new XMLReader();
 
@@ -128,10 +142,35 @@ class StyleHelper
 
                 } else if ($xmlReader->isPositionedOnStartingNode(self::XML_NODE_CELL_XFS)) {
                     $this->extractStyleAttributes($xmlReader);
+                }  else if ($xmlReader->isPositionedOnStartingNode(self::XML_NODE_FILLS)) {
+                    $this->extractFillAttributes($xmlReader);
                 }
             }
 
             $xmlReader->close();
+        }
+    }
+
+    /**
+     * Extracts style attributes from the "xf" nodes, inside the "cellXfs" section.
+     * For simplicity, the styles attributes are kept in memory. This is possible thanks
+     * to the reuse of styles. So 1 million cells should not use 1 million styles.
+     *
+     * @param \Box\Spout\Reader\Wrapper\XMLReader $xmlReader XML Reader positioned on the "cellXfs" node
+     * @return void
+     */
+    protected function extractFillAttributes($xmlReader)
+    {
+        while ($xmlReader->read()) {
+            if ($xmlReader->isPositionedOnStartingNode(self::XML_NODE_FILL)) {
+
+                $this->fillAttributes[] = self::nodeToArray(new DOMDocument(), $xmlReader->expand());
+                    // json_encode(simplexml_load_string($xmlReader->readInnerXML()));
+
+            } else if ($xmlReader->isPositionedOnEndingNode(self::XML_NODE_FILLS)) {
+                // Once done reading "cellXfs" node's children
+                break;
+            }
         }
     }
 
@@ -198,6 +237,18 @@ class StyleHelper
         }
 
         return $this->customNumberFormats;
+    }
+
+    /**
+     * @return array The styles attributes
+     */
+    protected function getFillsAttributes()
+    {
+        if (!isset($this->fillAttributes)) {
+            $this->extractRelevantInfo();
+        }
+
+        return $this->fillAttributes;
     }
 
     /**
@@ -340,5 +391,38 @@ class StyleHelper
         }
 
         return $numberFormatCode;
+    }
+
+    /**
+     * Returns an array representation of a DOMNode
+     * Note, make sure to use the LIBXML_NOBLANKS flag when loading XML into the DOMDocument
+     * @param DOMDocument $dom
+     * @param DOMNode $node
+     * @return array
+     */
+    static function nodeToArray($dom, $node) {
+        if(!is_a( $dom, 'DOMDocument' ) || !is_a( $node, 'DOMNode' )) {
+            return false;
+        }
+        $array = false;
+        if( empty( trim( $node->localName ))) {// Discard empty nodes
+            return false;
+        }
+        if( XML_TEXT_NODE == $node->nodeType ) {
+            return $node->nodeValue;
+        }
+        foreach ($node->attributes as $attr) {
+            $array['@'.$attr->localName] = $attr->nodeValue;
+        }
+        foreach ($node->childNodes as $childNode) {
+            if ( 1 == $childNode->childNodes->length && XML_TEXT_NODE == $childNode->firstChild->nodeType ) {
+                $array[$childNode->localName] = $childNode->nodeValue;
+            }  else {
+                if( false !== ($a = self::nodeToArray( $dom, $childNode))) {
+                    $array[$childNode->localName] =     $a;
+                }
+            }
+        }
+        return $array;
     }
 }

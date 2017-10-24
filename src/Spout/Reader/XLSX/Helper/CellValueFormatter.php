@@ -111,6 +111,11 @@ class CellValueFormatter
         return $this->styleHelper->getStyleAttributes($cellStyleId);
     }
 
+    //
+    public function extractNodeFill($node) {
+        $cellStyleId = intval($node->getAttribute(self::XML_ATTRIBUTE_STYLE_ID));
+        return $this->styleHelper->getFillAttributes($cellStyleId);
+    }
     /**
      * Returns the cell's string value from a node's nested value node
      *
